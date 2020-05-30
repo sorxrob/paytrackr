@@ -1,6 +1,6 @@
 import browser from "webextension-polyfill";
 import axios from "axios";
-import BigNumber from 'bignumber.js';
+import BigNumber from "bignumber.js";
 BigNumber.config({ DECIMAL_PLACES: 9 });
 
 export const getRecords = async (key, defaultValue = []) => {
@@ -84,17 +84,17 @@ export const notify = async (title, message) => {
       message,
       iconUrl: browser.extension.getURL("icons/icon_128.png"),
     });
-    return res
+    return res;
   } catch (e) {
     console.log("Error from background.js", e);
   }
 };
 
 export const getTotalForEachAssetCode = (hostnames, showInXRP, xrpInUSD) => {
-  return hostnames.map(item => {
+  return hostnames.map((item) => {
     const newObj = {
       ...item,
-      total: 0
+      total: 0,
     };
 
     if (!item.currencies) {
@@ -102,8 +102,8 @@ export const getTotalForEachAssetCode = (hostnames, showInXRP, xrpInUSD) => {
     }
 
     if (item.currencies) {
-      const xrp = item.currencies.find(i => i.assetCode === 'XRP');
-      const usd = item.currencies.find(i => i.assetCode !== 'XRP');
+      const xrp = item.currencies.find((i) => i.assetCode === "XRP");
+      const usd = item.currencies.find((i) => i.assetCode !== "XRP");
 
       if (xrp && showInXRP) {
         newObj.total = xrp.total;
@@ -122,8 +122,10 @@ export const getTotalForEachAssetCode = (hostnames, showInXRP, xrpInUSD) => {
           .plus((xrp.total * xrpInUSD).toFixed(xrp.assetScale))
           .toNumber();
       }
+
+      newObj.total = Number(newObj.total).toFixed(9);
     }
 
     return newObj;
-  })
-}
+  });
+};

@@ -1,11 +1,8 @@
 <template>
   <v-app>
     <v-app-bar app>
-      <v-toolbar-title>PayTrackr</v-toolbar-title>
+      <v-toolbar-title>PayTrackr v{{manifestVal.version || ''}}</v-toolbar-title>
       <v-spacer></v-spacer>
-      <v-btn icon @click="reloadData" :disabled="reloadDisabled">
-        <v-icon>mdi-reload</v-icon>
-      </v-btn>
       <v-menu>
         <template v-slot:activator="{ on }">
           <v-btn v-on="on" icon>
@@ -37,7 +34,12 @@
       <v-container>
         <v-tabs-items v-model="tab">
           <v-tab-item eager>
-            <Dashboard ref="dashboard" :showInXRP="showPaymentsInXRP" :xrpInUSD="xrpInUSD" />
+            <Dashboard
+              ref="dashboard"
+              :items="hostnames"
+              :showInXRP="showPaymentsInXRP"
+              :xrpInUSD="xrpInUSD"
+            />
           </v-tab-item>
           <v-tab-item eager>
             <RecentPayments ref="recentPayments" />
@@ -103,11 +105,7 @@
         <v-card-title>Support Developer</v-card-title>
         <v-card-text>
           <p>Thank you for using my extension. I hope you liked it.</p>
-          <p>
-            By agreeing to support me,
-            you will give me a
-            <span class="primary--text">5%</span> chance of getting a payment for every second you are in a Web-Monetized content.
-          </p>
+          <p>By agreeing to support me, payments will be split between the Web-Monetized content and me.</p>
           <v-checkbox v-model="agreeSupport" label="I agree"></v-checkbox>
         </v-card-text>
       </v-card>
@@ -186,21 +184,26 @@ export default {
       agreeSupport: false,
       reloadDisabled: false,
       optionsDialog: false,
-      showPaymentsInXRP: false
+      showPaymentsInXRP: false,
+      hostnames: []
     };
   },
   async created() {
     this.$vuetify.theme.dark = true;
-    const [theme, price, format] = await Promise.all([
+    const [theme, price, format, agreeSupport, hostnames] = await Promise.all([
       getRecords('paytrackr_theme', 'dark'),
       getRecords('paytrackr_xrp_in_usd'),
-      getRecords('paytrackr_format', 'USD')
+      getRecords('paytrackr_format', 'USD'),
+      getRecords('paytrackr_support_developer', false),
+      getRecords('paytrackr_hostnames')
     ]);
     if (theme !== 'dark') {
       this.$vuetify.theme.dark = false;
     }
     this.showPaymentsInXRP = format === 'XRP';
     this.xrpInUSD = price;
+    this.agreeSupport = agreeSupport;
+    this.hostnames = hostnames;
 
     this.$browser.storage.onChanged.addListener(this.onChangeListener);
   },
@@ -214,9 +217,26 @@ export default {
       await this.$refs.recentPayments.fetchHistory();
       this.reloadDisabled = false;
     },
-    onChangeListener(changes) {
+    async onChangeListener(changes) {
       if (changes['paytrackr_xrp_in_usd']) {
         this.xrpInUSD = changes['paytrackr_xrp_in_usd'].newValue;
+      }
+
+      if (changes['paytrackr_support_developer']) {
+        const tabs = await this.$browser.tabs.query({});
+        tabs.forEach(tab => {
+          if (tab.url.includes('chrome://') || !tab.url) {
+            return;
+          }
+
+          this.$browser.tabs.sendMessage(tab.id, {
+            agreeSupport: changes['paytrackr_support_developer'].newValue
+          });
+        });
+      }
+
+      if (changes['paytrackr_hostnames']) {
+        this.hostnames = changes['paytrackr_hostnames'].newValue;
       }
     },
     async resetData() {
@@ -271,7 +291,7 @@ export default {
         this.amount = 0;
       }
     },
-    agreeSupport(val) {
+    async agreeSupport(val) {
       setRecords('paytrackr_support_developer', val);
     },
     showPaymentsInXRP(val) {

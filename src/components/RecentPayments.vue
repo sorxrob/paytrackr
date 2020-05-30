@@ -54,8 +54,7 @@
         <v-card-title>Payment Info</v-card-title>
         <v-card-text>
           <p>Payment Pointer: {{ selectedItem.paymentPointer }}</p>
-          <p>Request ID: {{ selectedItem.requestId }}</p>
-          <p>Amount: {{ selectedItem.amount }}</p>
+          <p>Total amount: {{ selectedItem.scaledAmount }}</p>
           <p>Asset Scale: {{ selectedItem.assetScale }}</p>
           <p>Asset Code: {{ selectedItem.assetCode }}</p>
         </v-card-text>
@@ -82,16 +81,15 @@ export default {
     this.loading = true;
     await this.fetchHistory();
     this.loading = false;
-    // this.$browser.storage.onChanged.addListener(this.onChangeListener);
+    this.$browser.storage.onChanged.addListener(this.onChangeListener);
   },
   beforeDestroy() {
-    // this.$browser.storage.onChanged.removeListener(this.onChangeListener);
+    this.$browser.storage.onChanged.removeListener(this.onChangeListener);
   },
   methods: {
     onChangeListener(changes) {
       if (changes['paytrackr_history']) {
         const newValue = changes['paytrackr_history'].newValue;
-        const oldValue = changes['paytrackr_history'].oldValue;
 
         if (!newValue.length) {
           this.items = [];
@@ -106,18 +104,18 @@ export default {
           return;
         }
 
-        const newItems = [];
-
         for (var i = 0; i < newValue.length; i++) {
-          const item = oldValue.find(x => x.id === newValue[i].id);
-          if (item) {
-            break;
+          const itemIdx = this.items.findIndex(
+            item => item.id === newValue[i].id
+          );
+          if (itemIdx !== -1) {
+            this.items[itemIdx].scaledAmount = Number(
+              newValue[i].scaledAmount
+            ).toFixed(9);
+          } else {
+            this.items.unshift(newValue[i]);
           }
-
-          newItems.push(newValue[i]);
         }
-
-        this.items = [...newItems, ...this.items];
       }
     },
     async fetchHistory() {

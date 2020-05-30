@@ -2,8 +2,10 @@ if (document.monetization) {
   document.monetization.addEventListener("monetizationstart", (e) => {
     document.dispatchEvent(
       new CustomEvent("paytrackr_monetizationstart", {
-        detail: e.detail,
-      })
+        detail: {
+          ...e.detail,
+        },
+      }),
     );
   });
 
@@ -11,7 +13,7 @@ if (document.monetization) {
     document.dispatchEvent(
       new CustomEvent("paytrackr_monetizationstop", {
         detail: e.detail,
-      })
+      }),
     );
   });
 
@@ -19,7 +21,7 @@ if (document.monetization) {
     document.dispatchEvent(
       new CustomEvent("paytrackr_monetizationprogress", {
         detail: e.detail,
-      })
+      }),
     );
   });
 }

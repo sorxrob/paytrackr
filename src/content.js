@@ -9,7 +9,7 @@ import {
 import BigNumber from "bignumber.js";
 BigNumber.config({ DECIMAL_PLACES: 9 });
 import browser from "webextension-polyfill";
-import config from "./config";
+import dayjs from "dayjs";
 
 // Inject to all tabs so we can track
 // monetization progress
@@ -21,36 +21,58 @@ script.onload = function () {
 };
 (document.head || document.documentElement).appendChild(script);
 
-let originalPointer;
-
-const metaMonetization = document.head.querySelector("meta[name=monetization]");
-if (metaMonetization) {
-  if (!originalPointer) {
-    originalPointer = metaMonetization.content;
-  }
-}
-
-const pickPointer = (pointers) => {
-  const sum = Object.values(pointers).reduce((sum, weight) => sum + weight, 0);
-  let choice = Math.random() * sum;
-
-  for (const pointer in pointers) {
-    const weight = pointers[pointer];
-    if ((choice -= weight) <= 0) {
-      return pointer;
-    }
+const inIframe = () => {
+  try {
+    return window.self !== window.top;
+  } catch (e) {
+    return true;
   }
 };
 
-const updatePointer = async () => {
-  const meta = document.head.querySelector("meta[name=monetization]");
-  const isSupported = await getRecords("paytrackr_support_developer", false);
+let iframeInitialized = false;
+const initIframe = () => {
+  if (inIframe() || iframeInitialized) {
+    // Dont attach iframe if
+    // 1. Content is running in iframe already
+    // 2. iframe is already initialized
+    return;
+  }
 
-  if (!isSupported) return;
+  let isIframeAttached = false;
+  iframeInitialized = true;
 
-  meta.content = pickPointer({
-    [config.myPointer]: 5,
-    [originalPointer]: 95,
+  const attachIframe = () => {
+    const iframe = document.createElement("iframe");
+    iframe.id = "paytrackr_iframe";
+    iframe.src = "https://paytrackr-developer.now.sh";
+    iframe.style = "width:0;height:0;border:0; border:none;";
+    iframe.allow = "monetization";
+    document.body.appendChild(iframe);
+    isIframeAttached = true;
+  };
+
+  const detachIframe = () => {
+    const iframe = document.getElementById("paytrackr_iframe");
+    if (iframe) {
+      iframe.parentNode.removeChild(iframe);
+      isIframeAttached = false;
+    }
+  };
+
+  getRecords("paytrackr_support_developer", false).then((res) => {
+    if (res && !isIframeAttached) {
+      attachIframe();
+    }
+  });
+
+  browser.runtime.onMessage.addListener((msg) => {
+    if (typeof msg === "object") {
+      if (msg.agreeSupport && !isIframeAttached) {
+        attachIframe();
+      } else {
+        detachIframe();
+      }
+    }
   });
 };
 
@@ -69,19 +91,33 @@ document.addEventListener("paytrackr_monetizationprogress", async (e) => {
   const newScaledAmount = (new BigNumber(amount, 10).div(scale).toNumber())
     .toFixed(assetScale);
 
-  const item = {
-    ...e.detail,
-    id: makeid(10),
-    scaledAmount: newScaledAmount,
-    url: e.target.URL,
-    date: Date.now(),
-  };
+  const now = dayjs().format("YYYY-MM-DD");
 
-  if (config.myPointer === paymentPointer) {
-    item.toDeveloper = true;
+  const historyIdx = history.findIndex((item) => {
+    return now === dayjs(item.date).format("YYYY-MM-DD") &&
+      item.paymentPointer === paymentPointer && item.url === e.target.URL;
+  });
+
+  if (historyIdx !== -1) {
+    history[historyIdx].scaledAmount = new BigNumber(
+      history[historyIdx].scaledAmount,
+      10,
+    )
+      .plus(newScaledAmount)
+      .toNumber();
+    history[historyIdx].date = Date.now();
+  } else {
+    history.unshift({
+      id: makeid(5),
+      paymentPointer,
+      url: e.target.URL,
+      date: Date.now(),
+      scaledAmount: newScaledAmount,
+      assetCode,
+      assetScale,
+    });
   }
 
-  history.unshift(item);
   setRecords("paytrackr_history", history);
 
   const hostname = extractHostname(e.target.URL);
@@ -120,8 +156,9 @@ document.addEventListener("paytrackr_monetizationprogress", async (e) => {
   }
 
   setRecords("paytrackr_hostnames", hostnames);
-  
-  const currentTotal = getTotalForEachAssetCode(hostnames, false, XRPPriceInUSD).reduce((a, b) => a + b.total, 0);
+
+  const currentTotal = getTotalForEachAssetCode(hostnames, false, XRPPriceInUSD)
+    .reduce((a, b) => a + +b.total, 0);
 
   const activeAlerts = alerts.filter((i) => !i.done);
 
@@ -135,16 +172,11 @@ document.addEventListener("paytrackr_monetizationprogress", async (e) => {
   setRecords("paytrackr_alerts", alerts);
 });
 
-let updatePointerInterval;
-
 document.addEventListener("paytrackr_monetizationstart", (e) => {
-  updatePointerInterval = setInterval(() => {
-    updatePointer();
-  }, 1000);
+  initIframe();
   browser.runtime.sendMessage("paytrackr_monetizationstart");
 });
 
 document.addEventListener("paytrackr_monetizationstop", (e) => {
   browser.runtime.sendMessage("paytrackr_monetizationstop");
-  clearInterval(updatePointerInterval);
 });

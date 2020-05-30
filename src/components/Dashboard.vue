@@ -1,7 +1,7 @@
 <template>
   <div>
     <div v-if="items.length">
-      <v-card flat :loading="loading">
+      <v-card flat>
         <v-card-title>
           <span v-text="`${total} ${showInXRP ? 'XRP' : 'USD'}`"></span>
           <v-spacer></v-spacer>
@@ -13,7 +13,7 @@
         </v-card-title>
         <v-card-subtitle>Total Payments</v-card-subtitle>
         <v-card-text>
-          <Doughnut v-if="!loading" :options="options" :chart-data="chartData" :height="200" />
+          <Doughnut :options="options" :chart-data="chartData" :height="200" />
         </v-card-text>
       </v-card>
     </div>
@@ -34,7 +34,7 @@
             </v-icon>
           </v-list-item-avatar>
           <v-list-item-content>
-            <v-list-item-title v-text="i.hostname"></v-list-item-title>
+            <v-list-item-title>{{ i.hostname === 'paytrackr-developer.now.sh' ? 'PayTrackr Developer ❤️' : i.hostname }}</v-list-item-title>
             <v-list-item-subtitle v-text="`${i.total} ${showInXRP ? 'XRP' : 'USD' }`"></v-list-item-subtitle>
             <v-list-item-subtitle>
               Last payment:
@@ -77,14 +77,7 @@
                   <v-icon>mdi-contactless-payment</v-icon>
                 </v-list-item-avatar>
                 <v-list-item-content>
-                  <v-list-item-title>
-                    {{ value.total }} {{ showInXRP ? 'XRP' : 'USD' }}
-                    <br v-if="value.wentToDeveloper" />
-                    <span
-                      class="caption"
-                      v-if="value.wentToDeveloper"
-                    >{{ value.wentToDeveloper }} {{ showInXRP ? 'XRP' : 'USD' }} of this went to developer ❤️</span>
-                  </v-list-item-title>
+                  <v-list-item-title>{{ value.total }} {{ showInXRP ? 'XRP' : 'USD' }}</v-list-item-title>
                   <v-list-item-subtitle>
                     <a :href="name" target="_BLANK" v-text="name"></a>
                   </v-list-item-subtitle>
@@ -109,13 +102,11 @@ import BigNumber from 'bignumber.js';
 BigNumber.config({ DECIMAL_PLACES: 9 });
 
 export default {
-  props: ['xrpInUSD', 'showInXRP'],
+  props: ['xrpInUSD', 'showInXRP', 'items'],
   components: {
     Doughnut
   },
   data: () => ({
-    items: [],
-    loading: true,
     options: {
       legend: {
         display: false
@@ -130,13 +121,12 @@ export default {
           }
         }
       },
-      animation: {
-        duration: 0
-      },
       hover: {
         animationDuration: 0
       },
-      responsiveAnimationDuration: 0,
+      animation: {
+        duration: 0
+      },
       responsive: true,
       maintainAspectRatio: false
     },
@@ -145,29 +135,6 @@ export default {
     websiteInfoDialog: false,
     websiteInfoLoading: false
   }),
-  async mounted() {
-    this.loading = true;
-    await this.fetchHostnames();
-    this.loading = false;
-    // this.$browser.storage.onChanged.addListener(this.onChangeListener);
-  },
-  beforeDestroy() {
-    // this.$browser.storage.onChanged.removeListener(this.onChangeListener);
-  },
-  methods: {
-    onChangeListener(changes) {
-      if (changes['paytrackr_hostnames']) {
-        this.items = changes['paytrackr_hostnames'].newValue;
-      }
-    },
-    async fetchHostnames() {
-      try {
-        this.items = await getRecords('paytrackr_hostnames');
-      } catch (e) {
-        console.log('Fetch hostnames error', e);
-      }
-    }
-  },
   computed: {
     itemsWithCalculatedCurrencies() {
       return getTotalForEachAssetCode(
@@ -178,7 +145,9 @@ export default {
     },
     chartData() {
       return {
-        labels: this.itemsWithCalculatedCurrencies.map(i => i.hostname),
+        labels: this.itemsWithCalculatedCurrencies
+          .sort((a, b) => a.hostname.localeCompare(b.hostname))
+          .map(i => i.hostname),
         datasets: [
           {
             data: this.itemsWithCalculatedCurrencies.map(i => i.total),
@@ -191,93 +160,40 @@ export default {
     },
     total() {
       return this.itemsWithCalculatedCurrencies
-        .reduce((a, b) => a + b.total, 0)
+        .reduce((a, b) => a + +b.total, 0)
         .toFixed(9);
     },
     websiteUrls() {
       let urlMap = {};
       for (var i = 0; i < this.selectedWebsiteUrls.length; i++) {
         const item = this.selectedWebsiteUrls[i];
-        if (urlMap[item.url]) {
-          if (this.showInXRP && item.assetCode === 'USD') {
-            const total = (item.scaledAmount * (1 / this.xrpInUSD)).toFixed(
-              item.assetScale
-            );
-
-            urlMap[item.url].total = new BigNumber(urlMap[item.url].total, 10)
-              .plus(total)
-              .toNumber();
-
-            if (item.toDeveloper) {
-              urlMap[item.url].wentToDeveloper = new BigNumber(
-                urlMap[item.url].wentToDeveloper,
-                10
-              )
-                .plus(total)
-                .toNumber();
-            }
-          } else if (!this.showInXRP && item.assetCode === 'XRP') {
-            const total = (item.scaledAmount * this.xrpInUSD).toFixed(
-              item.assetScale
-            );
-
-            urlMap[item.url].total = new BigNumber(urlMap[item.url].total, 10)
-              .plus(total)
-              .toNumber();
-
-            if (item.toDeveloper) {
-              urlMap[item.url].wentToDeveloper = new BigNumber(
-                urlMap[item.url].wentToDeveloper,
-                10
-              )
-                .plus(total)
-                .toNumber();
-            }
-          } else {
-            urlMap[item.url].total = new BigNumber(urlMap[item.url].total, 10)
-              .plus(item.scaledAmount)
-              .toNumber();
-
-            if (item.toDeveloper) {
-              urlMap[item.url].wentToDeveloper = new BigNumber(
-                urlMap[item.url].wentToDeveloper,
-                10
-              )
-                .plus(item.scaledAmount)
-                .toNumber();
-            }
-          }
+        if (this.showInXRP && item.assetCode === 'USD') {
+          const total = (item.scaledAmount * (1 / this.xrpInUSD)).toFixed(
+            item.assetScale
+          );
+          urlMap[item.url] = {
+            total: total,
+            assetCode: item.assetCode,
+            lastUpdate: item.date
+          };
+        } else if (!this.showInXRP && item.assetCode === 'XRP') {
+          const total = (item.scaledAmount * this.xrpInUSD).toFixed(
+            item.assetScale
+          );
+          urlMap[item.url] = {
+            total: total,
+            assetCode: item.assetCode,
+            lastUpdate: item.date
+          };
         } else {
-          if (this.showInXRP && item.assetCode === 'USD') {
-            const total = (item.scaledAmount * (1 / this.xrpInUSD)).toFixed(
-              item.assetScale
-            );
-            urlMap[item.url] = {
-              total: total,
-              wentToDeveloper: item.toDeveloper ? total : 0,
-              assetCode: item.assetCode,
-              lastUpdate: item.date
-            };
-          } else if (!this.showInXRP && item.assetCode === 'XRP') {
-            const total = (item.scaledAmount * this.xrpInUSD).toFixed(
-              item.assetScale
-            );
-            urlMap[item.url] = {
-              total: total,
-              wentToDeveloper: item.toDeveloper ? item.scaledAmount : 0,
-              assetCode: item.assetCode,
-              lastUpdate: item.date
-            };
-          } else {
-            urlMap[item.url] = {
-              total: item.scaledAmount,
-              wentToDeveloper: item.toDeveloper ? item.scaledAmount : 0,
-              assetCode: item.assetCode,
-              lastUpdate: item.date
-            };
-          }
+          urlMap[item.url] = {
+            total: item.scaledAmount.toFixed(item.assetScale),
+            assetCode: item.assetCode,
+            lastUpdate: item.date
+          };
         }
       }
+      console.log(urlMap);
       return urlMap;
     }
   },
