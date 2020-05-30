@@ -85,14 +85,14 @@
                 <v-list-item-title>Report an issue</v-list-item-title>
               </v-list-item-content>
             </v-list-item>
-            <!-- <v-list-item
-              href="https://chrome.google.com/webstore/detail/paytrackr/jmkofipfojjlklmjpedfiokppaojkoel"
+            <v-list-item
+              href="https://chrome.google.com/webstore/detail/paytrackr/pcfbnmieeijeahdbbjefgkcbkfnccpei"
               target="_BLANK"
             >
               <v-list-item-content>
                 <v-list-item-title>Rate</v-list-item-title>
               </v-list-item-content>
-            </v-list-item>-->
+            </v-list-item>
           </v-list>
         </v-card-text>
       </v-card>
