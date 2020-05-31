@@ -312,9 +312,15 @@ export default {
         format: val ? 'XRP' : 'USD'
       });
     },
-    showCounter(val) {
+    async showCounter(val) {
       this.updateOptions({
         showCounter: val
+      });
+      const tabs = await this.$browser.tabs.query({});
+      tabs.forEach(tab => {
+        this.$browser.tabs.sendMessage(tab.id, {
+          showCounter: val
+        });
       });
     },
     async '$vuetify.theme.dark'(val) {

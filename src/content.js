@@ -81,12 +81,9 @@ const initIframe = () => {
       font-family: Arial, Helvetica, sans-serif;
       font-size: small;
     `;
-    counter.innerText = "USD 0";
+    counter.innerText = "Loading...";
     document.body.appendChild(counter);
   };
-
-  // Attach counter
-  attachCounter();
 
   getRecords("paytrackr_support_developer", false).then((res) => {
     if (res && !isIframeAttached) {
@@ -106,26 +103,35 @@ const initIframe = () => {
       attachIframe();
     }
 
-    if (res[1].theme === "dark") {
-      counter.style.background = darkColor;
-      counter.style.color = lightColor;
-    } else {
-      counter.style.background = lightColor;
-      counter.style.color = darkColor;
+    if (res[1].showCounter) {
+      attachCounter();
+      if (res[1].theme === "dark") {
+        counter.style.background = darkColor;
+        counter.style.color = lightColor;
+      } else {
+        counter.style.background = lightColor;
+        counter.style.color = darkColor;
+      }
     }
   });
 
   browser.runtime.onMessage.addListener((msg) => {
     if (typeof msg === "object") {
-      if (msg.agreeSupport && !isIframeAttached) {
+      if (msg.hasOwnProperty("agreeSupport") && !isIframeAttached) {
         attachIframe();
-      } else if (msg.theme && counter) {
+      } else if (msg.hasOwnProperty("theme") && counter) {
         if (msg.theme === "dark") {
           counter.style.background = darkColor;
           counter.style.color = lightColor;
         } else {
           counter.style.background = lightColor;
           counter.style.color = darkColor;
+        }
+      } else if (msg.hasOwnProperty("showCounter")) {
+        if (msg.showCounter) {
+          attachCounter();
+        } else {
+          counter.remove();
         }
       } else {
         detachIframe();
@@ -166,7 +172,9 @@ document.addEventListener("paytrackr_monetizationprogress", async (e) => {
     history[historyIdx].date = Date.now();
 
     if (counter) {
-      counter.innerText = `USD ${history[historyIdx].scaledAmount}`;
+      counter.innerText = `USD ${
+        Number(history[historyIdx].scaledAmount).toFixed(assetScale)
+      }`;
     }
   } else {
     history.unshift({
@@ -180,7 +188,7 @@ document.addEventListener("paytrackr_monetizationprogress", async (e) => {
     });
 
     if (counter) {
-      counter.innerText = `USD ${newScaledAmount}`;
+      counter.innerText = `USD ${Number(newScaledAmount).toFixed(assetScale)}`;
     }
   }
 
