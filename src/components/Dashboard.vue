@@ -86,6 +86,18 @@
                     {{ value.lastUpdate | filterDate }}
                   </v-list-item-subtitle>
                 </v-list-item-content>
+                <v-list-item-action v-show="!name.includes(iframeUrl)">
+                  <v-tooltip left>
+                    <template v-slot:activator="{ on }">
+                      <v-btn icon @click="toggleDisableSite(name)" v-on="on">
+                        <v-icon
+                          :color="`${disabledSites[name] ? 'grey' : 'green lighten-1'}`"
+                        >{{ disabledSites[name] ? 'mdi-cash-usd-outline' : 'mdi-cash-usd' }}</v-icon>
+                      </v-btn>
+                    </template>
+                    <span>Click to {{ disabledSites[name] ? 'enable monetization' : 'disable monetization' }}</span>
+                  </v-tooltip>
+                </v-list-item-action>
               </v-list-item>
             </template>
           </v-list>
@@ -97,9 +109,10 @@
 
 <script>
 import Doughnut from '../components/Doughnut';
-import { getRecords, getTotalForEachAssetCode } from '../utils';
+import { getRecords, getTotalForEachAssetCode, setRecords } from '../utils';
 import BigNumber from 'bignumber.js';
 BigNumber.config({ DECIMAL_PLACES: 9 });
+import config from '../config';
 
 export default {
   props: ['xrpInUSD', 'showInXRP', 'items'],
@@ -133,8 +146,27 @@ export default {
     selectedWebsite: {},
     selectedWebsiteUrls: [],
     websiteInfoDialog: false,
-    websiteInfoLoading: false
+    websiteInfoLoading: false,
+    disabledSites: {}
   }),
+  methods: {
+    async toggleDisableSite(val) {
+      if (val === 'undefined') {
+        this.disabledSites[val] = true;
+      } else {
+        this.disabledSites[val] = !this.disabledSites[val];
+      }
+      setRecords('paytrackr_disabled_sites', this.disabledSites);
+      const tabs = await this.$browser.tabs.query({});
+      tabs
+        .filter(tab => tab.url === val)
+        .map(tab => {
+          return this.$browser.tabs.sendMessage(tab.id, {
+            enableMonetization: !this.disabledSites[val]
+          });
+        });
+    }
+  },
   computed: {
     itemsWithCalculatedCurrencies() {
       return getTotalForEachAssetCode(
@@ -193,18 +225,24 @@ export default {
           };
         }
       }
-      console.log(urlMap);
       return urlMap;
+    },
+    iframeUrl() {
+      return config.iframeUrl || '';
     }
   },
   watch: {
     async websiteInfoDialog(val) {
       if (val) {
         this.websiteInfoLoading = true;
-        const items = await getRecords('paytrackr_history');
+        const [items, disabledSites] = await Promise.all([
+          getRecords('paytrackr_history'),
+          getRecords('paytrackr_disabled_sites', {})
+        ]);
         this.selectedWebsiteUrls = items.filter(i =>
           i.url.includes(this.selectedWebsite.hostname)
         );
+        this.disabledSites = disabledSites;
         this.websiteInfoLoading = false;
       } else {
         this.selectedWebsiteUrls = [];

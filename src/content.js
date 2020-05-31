@@ -12,7 +12,7 @@ import browser from "webextension-polyfill";
 import dayjs from "dayjs";
 import config from "./config";
 
-const metaMonetization = document.head.querySelector("meta[name=monetization]");
+let metaMonetization = document.head.querySelector("meta[name=monetization]");
 
 if (metaMonetization) {
   const script = document.createElement("script");
@@ -24,6 +24,14 @@ if (metaMonetization) {
   (document.head || document.documentElement).appendChild(script);
 }
 
+let previousMonetizationContent;
+getRecords("paytrackr_disabled_sites", {})
+  .then((res) => {
+    if (res[window.location.href]) {
+      disableMonetization();
+    }
+  });
+
 const inIframe = () => {
   try {
     return window.self !== window.top;
@@ -33,16 +41,47 @@ const inIframe = () => {
 };
 
 let counter;
+
+const darkColor = "#1E1E1E";
+const lightColor = "#FFF";
+
+const attachCounter = () => {
+  if (counter) return;
+  counter = document.createElement("div");
+
+  counter.style = `
+      position: fixed;
+      padding: 10px;
+      bottom: 40px;
+      left: 40px;
+      background-color: ${darkColor};
+      color: ${lightColor};
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: small;
+    `;
+  counter.innerText = "Loading...";
+  document.body.appendChild(counter);
+};
+
+const detachCounter = () => {
+  if (!counter) return;
+  counter.remove();
+  counter = null;
+};
+
 let iframeInitialized = false;
+let isIframeAttached = false;
+
 const initIframe = () => {
   if (inIframe() || iframeInitialized) {
-    // Dont attach iframe if
-    // 1. Content is running in iframe already
-    // 2. iframe is already initialized
     return;
   }
 
-  let isIframeAttached = false;
   iframeInitialized = true;
 
   const attachIframe = () => {
@@ -61,37 +100,6 @@ const initIframe = () => {
       iframe.parentNode.removeChild(iframe);
       isIframeAttached = false;
     }
-  };
-
-  const darkColor = "#1E1E1E";
-  const lightColor = "#FFF";
-
-  const attachCounter = () => {
-    if (counter) return;
-    counter = document.createElement("div");
-
-    counter.style = `
-      position: fixed;
-      padding: 10px;
-      bottom: 40px;
-      left: 40px;
-      background-color: ${darkColor};
-      color: ${lightColor};
-      border-radius: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-      font-family: Arial, Helvetica, sans-serif;
-      font-size: small;
-    `;
-    counter.innerText = "Loading...";
-    document.body.appendChild(counter);
-  };
-
-  const detachCounter = () => {
-    counter.remove();
-    counter = null;
   };
 
   getRecords("paytrackr_support_developer", false).then((res) => {
@@ -131,14 +139,17 @@ const initIframe = () => {
 
   browser.runtime.onMessage.addListener((msg) => {
     if (typeof msg === "object") {
-      if (msg.hasOwnProperty("agreeSupport") && !isIframeAttached) {
+      if (
+        msg.hasOwnProperty("agreeSupport") && !isIframeAttached &&
+        metaMonetization
+      ) {
         attachIframe();
       } else if (
         msg.hasOwnProperty("theme") && !msg.hasOwnProperty("showCounter") &&
         counter
       ) {
         applyTheme(msg.theme);
-      } else if (msg.hasOwnProperty("showCounter")) {
+      } else if (msg.hasOwnProperty("showCounter") && metaMonetization) {
         if (msg.showCounter) {
           attachCounter();
           if (msg.theme) {
@@ -153,6 +164,31 @@ const initIframe = () => {
     }
   });
 };
+
+const enableMonetization = () => {
+  metaMonetization = document.createElement("meta");
+  metaMonetization.name = "monetization";
+  metaMonetization.content = previousMonetizationContent;
+  document.head.appendChild(metaMonetization);
+};
+
+const disableMonetization = () => {
+  previousMonetizationContent = metaMonetization.content;
+  metaMonetization.remove();
+  metaMonetization = null;
+  iframeInitialized = false;
+};
+
+browser.runtime.onMessage.addListener((msg) => {
+  if (msg.hasOwnProperty("enableMonetization")) {
+    if (msg.enableMonetization) {
+      enableMonetization();
+    } else {
+      disableMonetization();
+      detachCounter();
+    }
+  }
+});
 
 // Listen to monetization progress event
 // sent by our injected file
@@ -262,7 +298,6 @@ document.addEventListener("paytrackr_monetizationprogress", async (e) => {
 });
 
 document.addEventListener("paytrackr_monetizationstart", (e) => {
-  console.log("started");
   initIframe();
   browser.runtime.sendMessage("paytrackr_monetizationstart");
 });
