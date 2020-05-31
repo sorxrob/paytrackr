@@ -64,6 +64,7 @@ const initIframe = () => {
   let lightColor = "#FFF";
 
   const attachCounter = () => {
+    if (counter) return;
     counter = document.createElement("div");
 
     counter.style = `
@@ -97,6 +98,7 @@ const initIframe = () => {
       showCounter: true,
       format: "USD",
       theme: "dark",
+      realTimePopup: false,
     }),
   ]).then((res) => {
     if (res[0] && !isIframeAttached) {
@@ -132,6 +134,7 @@ const initIframe = () => {
           attachCounter();
         } else {
           counter.remove();
+          counter = null;
         }
       } else {
         detachIframe();

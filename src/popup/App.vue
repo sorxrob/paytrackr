@@ -42,7 +42,7 @@
             />
           </v-tab-item>
           <v-tab-item eager>
-            <RecentPayments ref="recentPayments" />
+            <RecentPayments :realTimePopup="realTimePopup" ref="recentPayments" />
           </v-tab-item>
           <v-tab-item eager>
             <Alerts />
@@ -150,6 +150,12 @@
               </v-list-item-action>
               <v-list-item-title>Dark mode</v-list-item-title>
             </v-list-item>
+            <v-list-item>
+              <v-list-item-action>
+                <v-switch v-model="realTimePopup"></v-switch>
+              </v-list-item-action>
+              <v-list-item-title>Real-time Dashboard (CPU heavy)</v-list-item-title>
+            </v-list-item>
           </v-list>
         </v-card-text>
       </v-card>
@@ -192,7 +198,8 @@ export default {
       optionsDialog: false,
       showPaymentsInXRP: false,
       hostnames: [],
-      showCounter: false
+      showCounter: false,
+      realTimePopup: false
     };
   },
   async created() {
@@ -201,7 +208,8 @@ export default {
       getRecords('paytrackr_options', {
         showCounter: true,
         format: 'USD',
-        theme: 'dark'
+        theme: 'dark',
+        realTimePopup: false
       }),
       getRecords('paytrackr_xrp_in_usd'),
       getRecords('paytrackr_support_developer', false),
@@ -210,12 +218,13 @@ export default {
     if (options.theme !== 'dark') {
       this.$vuetify.theme.dark = false;
     }
+
     this.showPaymentsInXRP = options.format === 'XRP';
     this.xrpInUSD = price;
     this.agreeSupport = agreeSupport;
     this.hostnames = hostnames;
-    console.log(options);
     this.showCounter = options.showCounter;
+    this.realTimePopup = options.realTimePopup;
 
     this.$browser.storage.onChanged.addListener(this.onChangeListener);
   },
@@ -241,7 +250,7 @@ export default {
         });
       }
 
-      if (changes['paytrackr_hostnames']) {
+      if (changes['paytrackr_hostnames'] && this.realTimePopup) {
         this.hostnames = changes['paytrackr_hostnames'].newValue;
       }
     },
@@ -291,6 +300,11 @@ export default {
     },
     async updateOptions(data) {
       const options = await getRecords('paytrackr_options');
+      const newData = {
+        ...options,
+        ...data
+      };
+      console.log(newData);
       setRecords('paytrackr_options', {
         ...options,
         ...data
@@ -310,6 +324,11 @@ export default {
     showPaymentsInXRP(val) {
       this.updateOptions({
         format: val ? 'XRP' : 'USD'
+      });
+    },
+    realTimePopup(val) {
+      this.updateOptions({
+        realTimePopup: val
       });
     },
     async showCounter(val) {

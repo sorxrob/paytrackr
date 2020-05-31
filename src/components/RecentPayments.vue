@@ -67,6 +67,7 @@
 import { getRecords } from '../utils';
 
 export default {
+  props: ['realTimePopup'],
   data: () => ({
     items: [],
     initialItems: [],
@@ -81,7 +82,10 @@ export default {
     this.loading = true;
     await this.fetchHistory();
     this.loading = false;
-    this.$browser.storage.onChanged.addListener(this.onChangeListener);
+
+    if (this.realTimePopup) {
+      this.$browser.storage.onChanged.addListener(this.onChangeListener);
+    }
   },
   beforeDestroy() {
     this.$browser.storage.onChanged.removeListener(this.onChangeListener);
@@ -113,7 +117,9 @@ export default {
               newValue[i].scaledAmount
             ).toFixed(9);
           } else {
-            this.items.unshift(newValue[i]);
+            if (!this.realTimePopup) {
+              this.items.unshift(newValue[i]);
+            }
           }
         }
       }
@@ -148,7 +154,10 @@ export default {
         this.itemsPerPage,
         this.page
       );
-      this.items = [...this.items, ...newItems];
+      const items = [
+        ...new Set([...this.items, ...newItems].map(i => JSON.stringify(i)))
+      ].map(i => JSON.parse(i));
+      this.items = items;
       if (newItems.length === this.itemsPerPage) {
         this.page++;
       } else {
@@ -159,6 +168,15 @@ export default {
   computed: {
     payments() {
       return this.items.sort((a, b) => b.date - a.date);
+    }
+  },
+  watch: {
+    realTimePopup(val) {
+      if (this.realTimePopup) {
+        this.$browser.storage.onChanged.addListener(this.onChangeListener);
+      } else {
+        this.$browser.storage.onChanged.removeListener(this.onChangeListener);
+      }
     }
   }
 };
