@@ -163,8 +163,7 @@ document.addEventListener("paytrackr_monetizationprogress", async (e) => {
 
   const { amount, assetScale, assetCode, paymentPointer } = e.detail;
   const scale = Math.pow(10, assetScale);
-  const newScaledAmount = (new BigNumber(amount, 10).div(scale).toNumber())
-    .toFixed(assetScale);
+  const newScaledAmount = new BigNumber(amount, 10).div(scale).toNumber();
 
   const now = dayjs().format("YYYY-MM-DD");
 
@@ -193,7 +192,7 @@ document.addEventListener("paytrackr_monetizationprogress", async (e) => {
       paymentPointer,
       url: e.target.URL,
       date: Date.now(),
-      scaledAmount: Number(newScaledAmount).toFixed(assetScale),
+      scaledAmount: newScaledAmount,
       assetCode,
       assetScale,
     });

@@ -3,7 +3,7 @@
     <div v-if="items.length">
       <v-card flat>
         <v-card-title>
-          <span v-text="`${total} ${showInXRP ? 'XRP' : 'USD'}`"></span>
+          <span>{{total | scale }} {{showInXRP ? 'XRP' : 'USD'}}</span>
           <v-spacer></v-spacer>
           <v-btn
             v-if="false"
@@ -35,7 +35,7 @@
           </v-list-item-avatar>
           <v-list-item-content>
             <v-list-item-title>{{ i.hostname === 'paytrackr-developer.now.sh' ? 'PayTrackr Developer ❤️' : i.hostname }}</v-list-item-title>
-            <v-list-item-subtitle v-text="`${i.total} ${showInXRP ? 'XRP' : 'USD' }`"></v-list-item-subtitle>
+            <v-list-item-subtitle>{{i.total | scale(i.assetScale)}} {{showInXRP ? 'XRP' : 'USD'}}</v-list-item-subtitle>
             <v-list-item-subtitle>
               Last payment:
               {{ i.lastUpdate | filterDate }}
@@ -77,7 +77,7 @@
                   <v-icon>mdi-contactless-payment</v-icon>
                 </v-list-item-avatar>
                 <v-list-item-content>
-                  <v-list-item-title>{{ value.total }} {{ showInXRP ? 'XRP' : 'USD' }}</v-list-item-title>
+                  <v-list-item-title>{{ value.total | scale(value.assetScale) }} {{ showInXRP ? 'XRP' : 'USD' }}</v-list-item-title>
                   <v-list-item-subtitle>
                     <a :href="name" target="_BLANK" v-text="name"></a>
                   </v-list-item-subtitle>
@@ -159,36 +159,36 @@ export default {
       };
     },
     total() {
-      return this.itemsWithCalculatedCurrencies
-        .reduce((a, b) => a + +b.total, 0)
-        .toFixed(9);
+      return this.itemsWithCalculatedCurrencies.reduce(
+        (a, b) => a + +b.total,
+        0
+      );
     },
     websiteUrls() {
       let urlMap = {};
       for (var i = 0; i < this.selectedWebsiteUrls.length; i++) {
         const item = this.selectedWebsiteUrls[i];
         if (this.showInXRP && item.assetCode === 'USD') {
-          const total = (item.scaledAmount * (1 / this.xrpInUSD)).toFixed(
-            item.assetScale
-          );
+          const total = item.scaledAmount * (1 / this.xrpInUSD);
           urlMap[item.url] = {
             total: total,
             assetCode: item.assetCode,
+            assetScale: item.assetScale,
             lastUpdate: item.date
           };
         } else if (!this.showInXRP && item.assetCode === 'XRP') {
-          const total = (item.scaledAmount * this.xrpInUSD).toFixed(
-            item.assetScale
-          );
+          const total = item.scaledAmount * this.xrpInUSD;
           urlMap[item.url] = {
             total: total,
             assetCode: item.assetCode,
+            assetScale: item.assetScale,
             lastUpdate: item.date
           };
         } else {
           urlMap[item.url] = {
-            total: item.scaledAmount.toFixed(item.assetScale),
+            total: item.scaledAmount,
             assetCode: item.assetCode,
+            assetScale: item.assetScale,
             lastUpdate: item.date
           };
         }

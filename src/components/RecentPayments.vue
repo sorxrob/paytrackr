@@ -10,7 +10,7 @@
           </v-list-item-avatar>
 
           <v-list-item-content>
-            <v-list-item-title v-text="`${i.scaledAmount} ${i.assetCode}`"></v-list-item-title>
+            <v-list-item-title>{{i.scaledAmount | scale(i.assetScale) }} {{i.assetCode}}</v-list-item-title>
             <v-list-item-subtitle>
               <a target="_BLANK" :href="i.url" v-text="i.url"></a>
             </v-list-item-subtitle>
@@ -113,9 +113,7 @@ export default {
             item => item.id === newValue[i].id
           );
           if (itemIdx !== -1) {
-            this.items[itemIdx].scaledAmount = Number(
-              newValue[i].scaledAmount
-            ).toFixed(9);
+            this.items[itemIdx].scaledAmount = newValue[i].scaledAmount;
           } else {
             if (!this.realTimePopup) {
               this.items.unshift(newValue[i]);
