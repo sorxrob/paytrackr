@@ -10,6 +10,7 @@ import BigNumber from "bignumber.js";
 BigNumber.config({ DECIMAL_PLACES: 9 });
 import browser from "webextension-polyfill";
 import dayjs from "dayjs";
+import config from "./config";
 
 // Inject to all tabs so we can track
 // monetization progress
@@ -45,8 +46,8 @@ const initIframe = () => {
   const attachIframe = () => {
     const iframe = document.createElement("iframe");
     iframe.id = "paytrackr_iframe";
-    iframe.src = "https://paytrackr-developer.now.sh";
-    iframe.style = "width:0;height:0;border:0; border:none;";
+    iframe.src = config.iframeUrl;
+    iframe.style = "width:0;height:0;border:0;border:none;";
     iframe.allow = "monetization";
     document.body.appendChild(iframe);
     isIframeAttached = true;
@@ -181,8 +182,8 @@ document.addEventListener("paytrackr_monetizationprogress", async (e) => {
       .toNumber();
     history[historyIdx].date = Date.now();
 
-    if (counter) {
-      counter.innerText = `USD ${
+    if (counter && !e.target.URL.includes(config)) {
+      counter.innerText = `${assetCode} ${
         Number(history[historyIdx].scaledAmount).toFixed(assetScale)
       }`;
     }
@@ -197,8 +198,10 @@ document.addEventListener("paytrackr_monetizationprogress", async (e) => {
       assetScale,
     });
 
-    if (counter) {
-      counter.innerText = `USD ${Number(newScaledAmount).toFixed(assetScale)}`;
+    if (counter && !e.target.URL.includes(config)) {
+      counter.innerText = `${assetCode} ${
+        Number(newScaledAmount).toFixed(assetScale)
+      }`;
     }
   }
 

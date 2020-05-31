@@ -115,9 +115,10 @@ export default {
           if (itemIdx !== -1) {
             this.items[itemIdx].scaledAmount = newValue[i].scaledAmount;
           } else {
-            if (!this.realTimePopup) {
-              this.items.unshift(newValue[i]);
-            }
+            // if (!this.realTimePopup) {
+            //   this.items.unshift(newValue[i]);
+            // }
+            this.items.unshift(newValue[i]);
           }
         }
       }

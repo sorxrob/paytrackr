@@ -35,7 +35,10 @@
     </v-app-bar>
     <v-content>
       <v-container>
-        <v-tabs-items v-model="tab">
+        <div class="text-center" v-if="loading">
+          <v-progress-circular :size="50" color="primary" indeterminate></v-progress-circular>
+        </div>
+        <v-tabs-items v-model="tab" v-else>
           <v-tab-item eager>
             <Dashboard
               ref="dashboard"
@@ -206,6 +209,7 @@ export default {
     };
   },
   async created() {
+    this.loading = true;
     this.$vuetify.theme.dark = true;
     const [options, price, agreeSupport, hostnames] = await Promise.all([
       getRecords('paytrackr_options', {
@@ -228,7 +232,9 @@ export default {
     this.hostnames = hostnames;
     this.showCounter = options.showCounter;
     this.realTimePopup = options.realTimePopup;
-
+    setTimeout(() => {
+      this.loading = false;
+    }, 250);
     this.$browser.storage.onChanged.addListener(this.onChangeListener);
   },
   beforeDestroy() {

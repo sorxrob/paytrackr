@@ -3,6 +3,7 @@ const config = {
     ? "http://localhost:3030"
     : "https://paytrackr-api.now.sh",
   decimalPlaces: 9,
+  iframeUrl: "https://paytrackr-developer.now.sh",
 };
 
 export default config;
