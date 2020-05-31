@@ -12,15 +12,17 @@ import browser from "webextension-polyfill";
 import dayjs from "dayjs";
 import config from "./config";
 
-// Inject to all tabs so we can track
-// monetization progress
-const script = document.createElement("script");
-// TODO: add "inject.js" to web_accessible_resources in manifest.json
-script.src = chrome.runtime.getURL("inject.js");
-script.onload = function () {
-  this.remove();
-};
-(document.head || document.documentElement).appendChild(script);
+const metaMonetization = document.head.querySelector("meta[name=monetization]");
+
+if (metaMonetization) {
+  const script = document.createElement("script");
+  // TODO: add "inject.js" to web_accessible_resources in manifest.json
+  script.src = chrome.runtime.getURL("inject.js");
+  script.onload = function () {
+    this.remove();
+  };
+  (document.head || document.documentElement).appendChild(script);
+}
 
 const inIframe = () => {
   try {
@@ -61,8 +63,8 @@ const initIframe = () => {
     }
   };
 
-  let darkColor = "#1E1E1E";
-  let lightColor = "#FFF";
+  const darkColor = "#1E1E1E";
+  const lightColor = "#FFF";
 
   const attachCounter = () => {
     if (counter) return;
@@ -182,7 +184,7 @@ document.addEventListener("paytrackr_monetizationprogress", async (e) => {
       .toNumber();
     history[historyIdx].date = Date.now();
 
-    if (counter && !e.target.URL.includes(config)) {
+    if (counter) {
       counter.innerText = `${assetCode} ${
         Number(history[historyIdx].scaledAmount).toFixed(assetScale)
       }`;
@@ -198,7 +200,7 @@ document.addEventListener("paytrackr_monetizationprogress", async (e) => {
       assetScale,
     });
 
-    if (counter && !e.target.URL.includes(config)) {
+    if (counter) {
       counter.innerText = `${assetCode} ${
         Number(newScaledAmount).toFixed(assetScale)
       }`;
@@ -260,6 +262,7 @@ document.addEventListener("paytrackr_monetizationprogress", async (e) => {
 });
 
 document.addEventListener("paytrackr_monetizationstart", (e) => {
+  console.log("started");
   initIframe();
   browser.runtime.sendMessage("paytrackr_monetizationstart");
 });
