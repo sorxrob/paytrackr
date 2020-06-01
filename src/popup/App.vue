@@ -1,16 +1,9 @@
 <template>
   <v-app>
     <v-app-bar app>
-      <v-toolbar-title
-        >PayTrackr v{{ manifestVal.version || '' }}</v-toolbar-title
-      >
+      <v-toolbar-title>PayTrackr v{{ manifestVal.version || '' }}</v-toolbar-title>
       <v-spacer></v-spacer>
-      <v-btn
-        v-show="!realTimePopup"
-        @click="reloadData"
-        icon
-        :reloadDisabled="reloadDisabled"
-      >
+      <v-btn v-show="!realTimePopup" @click="reloadData" icon :reloadDisabled="reloadDisabled">
         <v-icon>mdi-reload</v-icon>
       </v-btn>
       <v-menu>
@@ -43,11 +36,7 @@
     <v-content>
       <v-container>
         <div class="text-center" v-if="loading">
-          <v-progress-circular
-            :size="50"
-            color="primary"
-            indeterminate
-          ></v-progress-circular>
+          <v-progress-circular :size="50" color="primary" indeterminate></v-progress-circular>
         </div>
         <v-tabs-items v-model="tab" v-else>
           <v-tab-item eager>
@@ -59,10 +48,7 @@
             />
           </v-tab-item>
           <v-tab-item eager>
-            <RecentPayments
-              :realTimePopup="realTimePopup"
-              ref="recentPayments"
-            />
+            <RecentPayments :realTimePopup="realTimePopup" ref="recentPayments" />
           </v-tab-item>
           <v-tab-item eager>
             <Alerts />
@@ -74,9 +60,7 @@
     <v-dialog v-model="resetDataDialog">
       <v-card>
         <v-card-title>Are you sure?</v-card-title>
-        <v-card-text>
-          This will reset all payments back to 0 and clear all alerts.
-        </v-card-text>
+        <v-card-text>This will reset all payments back to 0 and clear all alerts.</v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn text @click="resetDataDialog = false">Cancel</v-btn>
@@ -181,9 +165,7 @@
               <v-list-item-action>
                 <v-switch v-model="realTimePopup"></v-switch>
               </v-list-item-action>
-              <v-list-item-title
-                >Real-time Dashboard (CPU heavy)</v-list-item-title
-              >
+              <v-list-item-title>Real-time Dashboard (CPU heavy)</v-list-item-title>
             </v-list-item>
           </v-list>
         </v-card-text>
@@ -270,16 +252,21 @@ export default {
       }
 
       if (changes['paytrackr_support_developer']) {
-        const tabs = await this.$browser.tabs.query({});
-        tabs.forEach(tab => {
-          if (tab.url.includes('chrome://') || !tab.url) {
-            return;
-          }
-
-          this.$browser.tabs.sendMessage(tab.id, {
-            agreeSupport: changes['paytrackr_support_developer'].newValue
-          });
+        const tabs = (await this.$browser.tabs.query({})).filter(tab => {
+          return !tab.url.includes('chrome://') && !tab.url;
         });
+
+        try {
+          await Promise.all(
+            tabs.map(tab => {
+              return this.$browser.tabs.sendMessage(tab.id, {
+                agreeSupport: changes['paytrackr_support_developer'].newValue
+              });
+            })
+          );
+        } catch (e) {
+          console.log(e);
+        }
       }
 
       if (changes['paytrackr_hostnames'] && this.realTimePopup) {
@@ -370,25 +357,40 @@ export default {
       this.updateOptions({
         showCounter: val
       });
-      const tabs = await this.$browser.tabs.query({});
-      tabs.forEach(tab => {
-        if (tab.url.includes('chrome://')) return;
-        this.$browser.tabs.sendMessage(tab.id, {
-          showCounter: val,
-          theme: this.$vuetify.theme.dark ? 'dark' : 'light'
-        });
-      });
+      const tabs = (await this.$browser.tabs.query({})).filter(
+        tab => !tab.url.includes('chrome://')
+      );
+      try {
+        await Promise.all(
+          tabs.map(tab => {
+            return this.$browser.tabs.sendMessage(tab.id, {
+              showCounter: val,
+              theme: val ? 'dark' : 'light'
+            });
+          })
+        );
+      } catch (e) {
+        console.log(e);
+      }
     },
     async '$vuetify.theme.dark'(val) {
       this.updateOptions({
         theme: val ? 'dark' : 'light'
       });
-      const tabs = await this.$browser.tabs.query({});
-      tabs.forEach(tab => {
-        this.$browser.tabs.sendMessage(tab.id, {
-          theme: val ? 'dark' : 'light'
-        });
-      });
+      const tabs = (await this.$browser.tabs.query({})).filter(
+        tab => !tab.url.includes('chrome://')
+      );
+      try {
+        await Promise.all(
+          tabs.map(tab => {
+            return this.$browser.tabs.sendMessage(tab.id, {
+              theme: val ? 'dark' : 'light'
+            });
+          })
+        );
+      } catch (e) {
+        console.log(e);
+      }
     },
     async supperDeveloperDialog(val) {
       if (val) {

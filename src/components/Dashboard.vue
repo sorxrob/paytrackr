@@ -158,13 +158,19 @@ export default {
       }
       setRecords('paytrackr_disabled_sites', this.disabledSites);
       const tabs = await this.$browser.tabs.query({});
-      tabs
-        .filter(tab => tab.url === val)
-        .map(tab => {
-          return this.$browser.tabs.sendMessage(tab.id, {
-            enableMonetization: !this.disabledSites[val]
-          });
-        });
+      try {
+        await Promise.all(
+          tabs
+            .filter(tab => tab.url === val)
+            .map(tab => {
+              return this.$browser.tabs.sendMessage(tab.id, {
+                enableMonetization: !this.disabledSites[val]
+              });
+            })
+        );
+      } catch (e) {
+        console.log(e);
+      }
     }
   },
   computed: {
