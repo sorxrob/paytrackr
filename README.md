@@ -39,6 +39,13 @@ $ npm run build:dev
 2. Look for the button `Load Temporary Add-on...` and select any file inside the `dist` folder found in the root's path of our extension when we run `npm run build:dev`.
 3. You should see the PayTrackr icon in your browser bar.
 
+### Edge (Chromium)
+
+1. Open Microsoft Edge and type `edge://extensions`. Turn the switch `Developer mode` on.
+2. Look for the button `Load unpacked` and select the `dist` folder found in the root's path of our extension when we run `npm run build:dev`.
+3. Run `npm run watch:dev` to enable hot reloading of the extension.
+4. You should see the PayTrackr icon in your browser bar.
+
 ## Commands
 
 ### `npm run build`
