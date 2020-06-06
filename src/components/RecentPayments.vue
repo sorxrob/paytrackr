@@ -54,7 +54,7 @@
         <v-card-title>Payment Info</v-card-title>
         <v-card-text>
           <p>Payment Pointer: {{ selectedItem.paymentPointer }}</p>
-          <p>Total amount: {{ selectedItem.scaledAmount }}</p>
+          <p>Total amount: {{ selectedItem.scaledAmount | scale(selectedItem.assetScale) }}</p>
           <p>Asset Scale: {{ selectedItem.assetScale }}</p>
           <p>Asset Code: {{ selectedItem.assetCode }}</p>
         </v-card-text>
