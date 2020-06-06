@@ -306,6 +306,12 @@ document.addEventListener("paytrackr_monetizationstart", (e) => {
   browser.runtime.sendMessage("paytrackr_monetizationstart");
 });
 
-document.addEventListener("paytrackr_monetizationstop", (e) => {
-  browser.runtime.sendMessage("paytrackr_monetizationstop");
+// document.addEventListener("paytrackr_monetizationstop", (e) => {
+//   browser.runtime.sendMessage("paytrackr_monetizationstop");
+// });
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && !inIframe()) {
+    browser.runtime.sendMessage("paytrackr_monetizationstop");
+  }
 });
